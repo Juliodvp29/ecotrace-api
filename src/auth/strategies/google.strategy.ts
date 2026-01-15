@@ -11,6 +11,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')!,
       callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
       scope: ['email', 'profile'],
+      passReqToCallback: false,
+      proxy: true,
     });
   }
 
@@ -20,16 +22,20 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: Profile,
     done: VerifyCallback,
   ): Promise<any> {
-    const { id, name, emails, photos } = profile;
+    try {
+      const { id, name, emails, photos } = profile;
 
-    const user = {
-      googleId: id,
-      email: emails?.[0]?.value,
-      fullName: `${name?.givenName || ''} ${name?.familyName || ''}`.trim(),
-      avatarUrl: photos?.[0]?.value || null,
-      accessToken,
-    };
+      const user = {
+        googleId: id,
+        email: emails?.[0]?.value,
+        fullName: `${name?.givenName || ''} ${name?.familyName || ''}`.trim(),
+        avatarUrl: photos?.[0]?.value || null,
+        accessToken,
+      };
 
-    done(null, user);
+      done(null, user);
+    } catch (error) {
+      done(error, false);
+    }
   }
 }

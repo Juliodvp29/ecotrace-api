@@ -26,7 +26,8 @@ async function bootstrap() {
   const port = configService.get('PORT') || 3000;
   await app.listen(port);
 
-  console.log(`Server running on port ${port}
+  console.log(`
+    Server running on port ${port}
     API: http://localhost:${port}/api/v1
     Health: http://localhost:${port}/api/v1/auth/me`);
 }

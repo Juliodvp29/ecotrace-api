@@ -1,9 +1,9 @@
 import {
-    BadRequestException,
-    ConflictException,
-    Inject,
-    Injectable,
-    UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -21,7 +21,7 @@ export class AuthService {
     @Inject(PG_CONNECTION) private readonly pool: Pool,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
     const { email, password, fullName } = registerDto;
@@ -71,7 +71,7 @@ export class AuthService {
     }
   }
 
-  
+
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
 
@@ -116,54 +116,82 @@ export class AuthService {
   async googleAuth(googleAuthDto: GoogleAuthDto): Promise<AuthResponseDto> {
     const { googleId, email, fullName, avatarUrl } = googleAuthDto;
 
-    let user = await this.findUserByGoogleId(googleId);
+    console.log('🔵 Starting Google Auth for:', email);
 
-    if (!user) {
-      user = await this.findUserByEmail(email);
+    try {
+      let user = await this.findUserByGoogleId(googleId);
+      console.log('🔍 User found by Google ID:', user ? 'Yes' : 'No');
 
-      if (user) {
-        if (user.password_hash) {
-          throw new ConflictException(
-            'Email already registered with password. Please login with your password first, then link your Google account in settings.',
+      if (!user) {
+        user = await this.findUserByEmail(email);
+        console.log('🔍 User found by email:', user ? 'Yes' : 'No');
+
+        if (user) {
+          if (user.password_hash) {
+            throw new ConflictException(
+              'Email already registered with password. Please login with your password first, then link your Google account in settings.',
+            );
+          }
+
+          console.log('🔗 Linking Google account to existing user');
+
+          const updateResult = await this.pool.query(
+            `UPDATE users 
+             SET google_id = $1, auth_provider = $2, avatar_url = COALESCE(avatar_url, $3), updated_at = NOW()
+             WHERE id = $4
+             RETURNING id, email, full_name, role, avatar_url, auth_provider`,
+            [googleId, 'google', avatarUrl, user.id],
           );
+
+          user = updateResult.rows[0];
+        } else {
+          console.log('➕ Creating new user with Google');
+
+          const result = await this.pool.query(
+            `INSERT INTO users (email, google_id, full_name, auth_provider, role, avatar_url, is_email_verified, email_verified_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+             RETURNING id, email, full_name, role, avatar_url, auth_provider`,
+            [email, googleId, fullName, 'google', 'user', avatarUrl, true],
+          );
+
+          user = result.rows[0];
+          console.log('✅ New user created:', user.id);
         }
-
-        await this.pool.query(
-          `UPDATE users 
-           SET google_id = $1, auth_provider = $2, avatar_url = COALESCE(avatar_url, $3)
-           WHERE id = $4`,
-          [googleId, 'google', avatarUrl, user.id],
-        );
       } else {
-        const result = await this.pool.query(
-          `INSERT INTO users (email, google_id, full_name, auth_provider, role, avatar_url, is_email_verified, email_verified_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           RETURNING id, email, full_name, role, avatar_url, auth_provider`,
-          [email, googleId, fullName, 'google', 'user', avatarUrl, true],
-        );
-
-        user = result.rows[0];
+        console.log('✅ User already exists with Google ID');
       }
+
+      console.log('🔑 Generating tokens for user:', user.id);
+      const tokens = await this.generateTokens(user);
+
+      await this.updateLastLogin(user.id);
+      console.log('✅ Last login updated');
+
+      const response = {
+        ...tokens,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.full_name,
+          role: user.role,
+          avatarUrl: user.avatar_url,
+          authProvider: user.auth_provider,
+        },
+      };
+
+      console.log('✅ Google Auth successful for:', email);
+      return response;
+    } catch (error) {
+      console.error('❌ Error in googleAuth:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
+      throw error;
     }
-
-    const tokens = await this.generateTokens(user);
-
-    await this.updateLastLogin(user.id);
-
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        role: user.role,
-        avatarUrl: user.avatar_url,
-        authProvider: user.auth_provider,
-      },
-    };
   }
 
-  
   private async findUserByEmail(email: string): Promise<any> {
     const result = await this.pool.query(
       'SELECT * FROM users WHERE email = $1',
