@@ -25,7 +25,7 @@ export class OrganizationsService {
     // ============================================================================
 
     async create(userId: string, createDto: CreateOrganizationDto) {
-        const { legalName, fiscalId, industrySector, geographicLocation, defaultCurrency, distanceUnit, volumeUnit } = createDto;
+        const { legalName, fiscalId, industrySector, geographicLocation, defaultCurrency, distanceUnit, volumeUnit, language } = createDto;
 
         // Check if user already has an organization
         const userCheck = await this.pool.query(
@@ -53,10 +53,10 @@ export class OrganizationsService {
 
             // Create organization
             const orgResult = await client.query(
-                `INSERT INTO organizations (legal_name, fiscal_id, industry_sector, geographic_location, default_currency, distance_unit, volume_unit)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO organizations (legal_name, fiscal_id, industry_sector, geographic_location, default_currency, distance_unit, volume_unit, language)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-                [legalName, fiscalId, industrySector, geographicLocation, defaultCurrency || 'USD', distanceUnit || 'km', volumeUnit || 'liters']
+                [legalName, fiscalId, industrySector, geographicLocation, defaultCurrency || 'USD', distanceUnit || 'km', volumeUnit || 'liters', language || 'es']
             );
 
             const organization = orgResult.rows[0];
@@ -125,7 +125,7 @@ export class OrganizationsService {
         // Verify user is admin of this organization
         await this.verifyUserIsAdmin(userId, id);
 
-        const { legalName, industrySector, logoUrl, defaultCurrency, distanceUnit, volumeUnit } = updateDto;
+        const { legalName, industrySector, logoUrl, defaultCurrency, distanceUnit, volumeUnit, language } = updateDto;
 
         const updates: string[] = [];
         const values: any[] = [];
@@ -154,6 +154,10 @@ export class OrganizationsService {
         if (volumeUnit) {
             updates.push(`volume_unit = $${paramCount++}`);
             values.push(volumeUnit);
+        }
+        if (language) {
+            updates.push(`language = $${paramCount++}`);
+            values.push(language);
         }
 
         if (updates.length === 0) {
@@ -390,6 +394,7 @@ export class OrganizationsService {
             defaultCurrency: org.default_currency,
             distanceUnit: org.distance_unit,
             volumeUnit: org.volume_unit,
+            language: org.language,
             memberCount: parseInt(org.member_count) || 0,
             facilityCount: parseInt(org.facility_count) || 0,
             createdAt: org.created_at,
