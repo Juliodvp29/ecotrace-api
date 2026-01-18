@@ -116,15 +116,11 @@ export class AuthService {
   async googleAuth(googleAuthDto: GoogleAuthDto): Promise<AuthResponseDto> {
     const { googleId, email, fullName, avatarUrl } = googleAuthDto;
 
-    console.log('🔵 Starting Google Auth for:', email);
-
     try {
       let user = await this.findUserByGoogleId(googleId);
-      console.log('🔍 User found by Google ID:', user ? 'Yes' : 'No');
 
       if (!user) {
         user = await this.findUserByEmail(email);
-        console.log('🔍 User found by email:', user ? 'Yes' : 'No');
 
         if (user) {
           if (user.password_hash) {
@@ -132,8 +128,6 @@ export class AuthService {
               'Email already registered with password. Please login with your password first, then link your Google account in settings.',
             );
           }
-
-          console.log('🔗 Linking Google account to existing user');
 
           const updateResult = await this.pool.query(
             `UPDATE users 
@@ -145,7 +139,6 @@ export class AuthService {
 
           user = updateResult.rows[0];
         } else {
-          console.log('➕ Creating new user with Google');
 
           const result = await this.pool.query(
             `INSERT INTO users (email, google_id, full_name, auth_provider, role, avatar_url, is_email_verified, email_verified_at)
@@ -155,17 +148,14 @@ export class AuthService {
           );
 
           user = result.rows[0];
-          console.log('✅ New user created:', user.id);
         }
       } else {
-        console.log('✅ User already exists with Google ID');
+
       }
 
-      console.log('🔑 Generating tokens for user:', user.id);
       const tokens = await this.generateTokens(user);
 
       await this.updateLastLogin(user.id);
-      console.log('✅ Last login updated');
 
       const response = {
         ...tokens,
@@ -179,15 +169,8 @@ export class AuthService {
         },
       };
 
-      console.log('✅ Google Auth successful for:', email);
       return response;
     } catch (error) {
-      console.error('❌ Error in googleAuth:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-      });
       throw error;
     }
   }

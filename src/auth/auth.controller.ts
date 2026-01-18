@@ -50,59 +50,35 @@ export class AuthController {
   }
 
   @Get('google/callback')
-  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    console.log('📥 Google callback received');
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
 
-    const passport = require('passport');
+    try {
+      const user = req.user;
 
-    passport.authenticate('google', { session: false }, async (err: any, user: any) => {
-      try {
-        if (err) {
-          console.error('❌ Passport error:', err.message);
-          return res.status(500).json({
-            success: false,
-            message: 'Authentication failed',
-            error: err.message
-          });
-        }
-
-        if (!user || !user.email) {
-          console.error('❌ No user data from Google');
-          return res.status(400).json({
-            success: false,
-            message: 'No user data received from Google'
-          });
-        }
-
-        console.log('✅ User from Google:', user.email);
-
-        const authResponse = await this.authService.googleAuth(user);
-
-        console.log('✅ Authentication successful');
-
-        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-
-        if (!frontendUrl || frontendUrl === '' || frontendUrl === 'http://localhost:5173') {
-          console.log('📤 Returning JSON (no frontend configured)');
-          return res.status(200).json({
-            success: true,
-            message: '✅ Authentication successful! Save these tokens:',
-            ...authResponse,
-          });
-        }
-
-        console.log('↪️ Redirecting to frontend:', frontendUrl);
-        const redirectUrl = `${frontendUrl}/auth/callback?token=${authResponse.accessToken}&refresh=${authResponse.refreshToken}`;
-        return res.redirect(redirectUrl);
-
-      } catch (error: any) {
-        console.error('❌ Authentication error:', error.message);
-        return res.status(500).json({
+      if (!user || !user.email) {
+        return res.status(400).json({
           success: false,
-          message: error.message || 'Authentication failed'
+          message: 'No user data received from Google'
         });
       }
-    })(req, res);
+
+
+      const authResponse = await this.authService.googleAuth(user);
+
+
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
+      const userParam = encodeURIComponent(JSON.stringify(authResponse.user));
+
+      const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${authResponse.accessToken}&refreshToken=${authResponse.refreshToken}&user=${userParam}`;
+      return res.redirect(redirectUrl);
+
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Authentication failed'
+      });
+    }
   }
 
   @Get('me')

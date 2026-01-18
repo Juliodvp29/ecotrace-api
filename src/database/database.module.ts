@@ -22,10 +22,10 @@ const databaseProvider = {
     // Test connection
     try {
       const client = await pool.connect();
-      console.log('✅ Database connected successfully');
+      console.log('Database connected successfully');
       client.release();
     } catch (error) {
-      console.error('❌ Database connection failed:', error);
+      console.error('Database connection failed:', error);
       throw error;
     }
 
@@ -38,4 +38,4 @@ const databaseProvider = {
   providers: [databaseProvider],
   exports: [PG_CONNECTION],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }
