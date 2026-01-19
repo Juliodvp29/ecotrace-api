@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { DataEntriesModule } from './data-entries/data-entries.module';
 import { DatabaseModule } from './database/database.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -14,7 +15,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
     DatabaseModule,
     AuthModule,
     OrganizationsModule,
-    FacilitiesModule
+    FacilitiesModule,
+    DataEntriesModule
   ],
 })
 export class AppModule { }
