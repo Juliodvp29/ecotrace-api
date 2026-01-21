@@ -31,4 +31,9 @@ export class UpdateOrganizationDto {
     @IsOptional()
     @IsIn(['liters', 'gallons'])
     volumeUnit?: string;
+
+    @IsString()
+    @IsOptional()
+    @IsIn(['es', 'en', 'pt', 'fr', 'de', 'it'])
+    language?: string;
 }
